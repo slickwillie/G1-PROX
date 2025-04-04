@@ -1,0 +1,65 @@
+package com.evenrealities.integration;
+
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.media.MediaPlayer;
+
+public class ProximityIntegration implements SensorEventListener {
+
+    private SensorManager sensorManager;
+    private Sensor proximitySensor;
+    private EvenGlassesDisplay hudDisplay;
+    private Context appContext;
+    private MediaPlayer alarmSound;
+    private final float DISTANCE_THRESHOLD = 5.0f; // Set max distance limit in cm
+
+    public ProximityIntegration(Context context, EvenGlassesDisplay hudDisplay) {
+        this.hudDisplay = hudDisplay;
+        this.appContext = context;
+        alarmSound = MediaPlayer.create(context, R.raw.alarm_sound); // Ensure you have an alarm sound file in `res/raw/`
+
+        sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+        proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
+
+        if (proximitySensor != null) {
+            sensorManager.registerListener(this, proximitySensor, SensorManager.SENSOR_DELAY_NORMAL);
+        }
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_PROXIMITY) {
+            float distance = event.values[0];
+
+            // Send proximity data to Even Realities HUD
+            hudDisplay.showMessage("Proximity: " + distance + " cm");
+
+            // Trigger alarm if distance exceeds threshold
+            if (distance > DISTANCE_THRESHOLD) {
+                playAlarm();
+            }
+        }
+    }
+
+    private void playAlarm() {
+        if (!alarmSound.isPlaying()) {
+            alarmSound.start(); // Play alarm sound
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // Optional: Handle accuracy changes
+    }
+
+    public void stopSensor() {
+        sensorManager.unregisterListener(this);
+        if (alarmSound.isPlaying()) {
+            alarmSound.stop();
+        }
+        alarmSound.release();
+    }
+}
